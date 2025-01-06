@@ -16,6 +16,14 @@ function Home() {
         description: "Classic Snake game implementation",
         new: true,
       },
+      {
+        path: "/spirograph",
+        name: "Spirograph",
+        title: "Spirograph",
+        date: "2025-01-07",
+        description: "Spirographing like it's 1965",
+        new: true,
+      },
       // Add more routes as needed
     ];
 
