@@ -67,3 +67,214 @@
     @apply bg-background text-foreground;
   }
 }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Instrument Mono";
+  src: url("src/assets/fonts/InstrumentSansMono-Regular.otf") format("opentype");
+}
+
+/*
+==================================================
+ Colors and themes
+==================================================
+*/
+
+/* Custom color sets to use for theming, not to be used directly*/
+:root {
+  --color-satsuma-100: #fdede8;
+  --color-satsuma-300: #f19174;
+  --color-satsuma-500: #ff3c00;
+  --color-satsuma-700: #74240c;
+  --color-satsuma-900: #381106;
+
+  --color-dogpiss-100: #fcfde8;
+  --color-dogpiss-300: #eef174;
+  --color-dogpiss-500: #faff00;
+  --color-dogpiss-700: #72730b;
+  --color-dogpiss-900: #363705;
+}
+
+/* Theme colors */
+:root {
+  --color-white: #fff;
+  --color-white-50percent: rgba(255, 255, 255, 0.5);
+  --color-white-75percent: rgba(255, 255, 255, 0.75);
+
+  --color-black-12percent: rgba(0, 0, 0, 0.12);
+  --color-black-50percent: rgba(0, 0, 0, 0.5);
+  --color-black: #000;
+
+  --color-theme-light: #e9e9e9;
+  --color-theme-neutral: rgba(0, 0, 0, 0.5);
+  --color-theme-dark: black;
+}
+
+/* Examples of defining a theme */
+.page-theme-matthew {
+  --color-theme-light: var(--color-satsuma-300);
+  --color-theme-neutral: var(--color-satsuma-500);
+  --color-theme-dark: var(--color-satsuma-900);
+}
+
+.page-theme-lorraine {
+  --color-theme-light: var(--color-dogpiss-300);
+  --color-theme-neutral: var(--color-dogpiss-500);
+  --color-theme-dark: var(--color-dogpiss-900);
+}
+
+/**
+ * The @layer base directive is used to define global foundational styles 
+ * that apply throughout the application. This includes setting default 
+ * typography, resetting browser inconsistencies, and applying any 
+ * universal element styles. Styles defined here precede components 
+ * and utilities, ensuring a consistent base for further customizations.
+ */
+@layer base {
+  /*
+==================================================
+ Basic CSS Reset
+==================================================
+*/
+  *,
+  *::before,
+  *::after {
+    @apply m-0 box-border font-normal;
+  }
+
+  html {
+    @apply h-full w-full;
+  }
+
+  body {
+    @apply m-0 h-full w-full p-0 font-sans;
+  }
+
+  #app {
+    @apply h-full w-full;
+  }
+
+  /*
+==================================================
+ Type stack
+==================================================
+*/
+  html {
+    @apply font-sans text-base;
+  }
+
+  .h1-lg,
+  .h1-xl,
+  .h1 {
+    @apply font-medium;
+  }
+
+  h1,
+  .h1 {
+    @apply text-[36px] leading-[40px] tracking-[-0.02em];
+    @apply md:text-[44px] md:leading-[48px] md:tracking-[-0.025em];
+    @apply lg:text-[52px] lg:leading-[56px] lg:tracking-[-0.03em];
+  }
+
+  .h1-xl {
+    @apply text-[54px] leading-[54px] tracking-[-0.03em];
+    @apply md:text-[96px] md:leading-[96px] md:tracking-[-0.04em];
+    @apply lg:text-[120px] lg:leading-[120px] lg:tracking-[-0.05em];
+  }
+
+  .h1-lg {
+    @apply text-[41px] leading-[45px] tracking-[-0.02em];
+    @apply md:text-[52px] md:leading-[56px] md:tracking-[-0.025em];
+    @apply lg:text-[60px] lg:leading-[64px] lg:tracking-[-0.03em];
+  }
+
+  h2,
+  .h2 {
+    @apply text-[32px] font-medium leading-[36px] tracking-[-0.02em];
+    @apply md:text-[36px] md:leading-[40px] md:tracking-[-0.025em];
+    @apply lg:text-[44px] lg:leading-[48px] lg:tracking-[-0.03em];
+  }
+
+  h3,
+  .h3 {
+    @apply text-[24px] font-medium leading-[28px] tracking-[-0.015em];
+    @apply md:text-[28px] md:leading-[32px] md:tracking-[-0.01em];
+    @apply lg:text-[36px] lg:leading-[40px] lg:tracking-[-0.015em];
+  }
+
+  h4,
+  .h4 {
+    @apply text-[20px] font-medium leading-[25px] tracking-[-0.01em];
+    @apply md:text-[23px] md:leading-[28px] md:tracking-[-0.005em];
+    @apply lg:text-[23px] lg:leading-[28px] lg:tracking-[-0.01em];
+  }
+
+  h5,
+  .h5 {
+    @apply text-[15px] font-medium leading-[20px];
+    @apply md:text-[19px] md:leading-[24px] md:tracking-[0.005em];
+    @apply lg:text-[20px] lg:leading-[24px];
+  }
+
+  body,
+  .body {
+    @apply text-[16px] font-normal leading-[24px] tracking-[0.025em];
+    @apply md:text-[17px] md:leading-[28px] md:tracking-[0.02em];
+    @apply lg:text-[21px] lg:leading-[32px] lg:tracking-[0.015em];
+  }
+
+  .body-lg {
+    @apply text-[20px] font-normal leading-[30px] tracking-[0.025em];
+    @apply md:text-[22px] md:leading-[32px] md:tracking-[0.02em];
+    @apply lg:text-[30px] lg:leading-[40px] lg:tracking-[0.01em];
+  }
+
+  .body-sm {
+    @apply text-[13px] font-normal leading-[20px] tracking-[0.03em];
+    @apply md:text-[15px] md:leading-[24px] md:tracking-[0.03em];
+    @apply lg:text-[15px] lg:leading-[24px] lg:tracking-[0.02em];
+  }
+
+  .caption {
+    @apply text-[16px] font-semibold leading-[24px] tracking-[0.11em];
+    @apply md:text-[17px] md:leading-[28px];
+    @apply lg:text-[21px] lg:leading-[32px];
+  }
+
+  /* Customize further as needed */
+}
+
+/*
+==================================================
+ Custom Global Styles
+==================================================
+*/
+
+/**
+ * @layer components is used for defining component-specific styles, 
+ * grouping styles that are more complex than utilities and often 
+ * represent reusable UI elements. This layer ensures component styles 
+ * have higher specificity than base styles but lower than utilities, 
+ * allowing for consistent and modular design customization.
+ */
+@layer components {
+  button,
+  .button {
+    @apply inline-block cursor-pointer select-none rounded-full bg-black px-4 py-2 text-white;
+    @apply hover:bg-black-50%;
+
+    &:disabled {
+      @apply cursor-not-allowed bg-black-12%;
+    }
+  }
+
+  input[type="text"] {
+    @apply inline-block resize-none rounded-lg border border-transparent bg-transparent px-4 py-2 text-theme-dark;
+    @apply focus:bg-transparent focus:outline-none focus:ring-1 focus:ring-transparent;
+    @apply hover:border-theme-neutral;
+    @apply placeholder:opacity-50;
+  }
+}
