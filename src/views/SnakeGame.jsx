@@ -1,3 +1,5 @@
+//An example of a game built with Claude, below code is pasted directly from Claude Artifacts
+
 import React, { useState, useEffect, useCallback } from "react";
 
 const GRID_SIZE = 20;

@@ -1,11 +1,14 @@
-import "./App.css";
-import Artifact from "./components/Artifact";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import SnakeGame from "./views/SnakeGame";
 
 function App() {
   return (
-    <>
-      <Artifact />
-    </>
+    <BrowserRouter>
+      <Routes>
+        {/* <Route path="/" element={<Home />} /> */}
+        <Route path="/snake" element={<SnakeGame />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
