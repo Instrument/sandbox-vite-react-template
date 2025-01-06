@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import SnakeGame from "./views/SnakeGame";
-import Home from "./views/Home";
+import Home from "./Home";
 
 function App() {
   return (
