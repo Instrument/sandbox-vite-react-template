@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/card.jsx";
 import { Slider } from "@/components/ui/slider.jsx";
 import { Button } from "@/components/ui/button";
+import { Play, Square } from "lucide-react";
 
 const SpirographGenerator = () => {
   const [outerRadius, setOuterRadius] = useState(80);
@@ -15,6 +16,9 @@ const SpirographGenerator = () => {
   const [rotations, setRotations] = useState(50);
   const [color, setColor] = useState("#FF0000");
   const canvasRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(1);
+  const animationRef = useRef(null);
 
   // Calculate GCD for determining number of rotations needed
   const gcd = (a, b) => {
@@ -45,7 +49,7 @@ const SpirographGenerator = () => {
   };
 
   // Draw the spirograph
-  const drawSpirograph = () => {
+  const drawSpirograph = (currentProgress = 1) => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     const points = calculatePoints();
@@ -73,7 +77,10 @@ const SpirographGenerator = () => {
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    points.forEach((point, i) => {
+    // Only draw up to the current progress point
+    const pointsToDraw = Math.floor(points.length * currentProgress);
+
+    points.slice(0, pointsToDraw).forEach((point, i) => {
       const x = (point.x - minX) * scale + 20;
       const y = (point.y - minY) * scale + 20;
 
@@ -87,9 +94,46 @@ const SpirographGenerator = () => {
     ctx.stroke();
   };
 
-  // Redraw when parameters change
+  // Add animation functions
+  const animate = (timestamp) => {
+    if (!animationRef.current) {
+      animationRef.current = timestamp;
+    }
+
+    const elapsed = timestamp - animationRef.current;
+    // Animation duration: 3 seconds
+    const duration = 3000;
+
+    const newProgress = Math.min(elapsed / duration, 1);
+    setProgress(newProgress);
+    drawSpirograph(newProgress);
+
+    if (newProgress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      setIsPlaying(false);
+      animationRef.current = null;
+    }
+  };
+
+  const togglePlay = () => {
+    if (isPlaying) {
+      setIsPlaying(false);
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+      drawSpirograph(1); // Draw complete pattern
+    } else {
+      setIsPlaying(true);
+      setProgress(0);
+      requestAnimationFrame(animate);
+    }
+  };
+
+  // Modify the useEffect to use progress
   useEffect(() => {
-    drawSpirograph();
+    if (!isPlaying) {
+      drawSpirograph(1);
+    }
   }, [outerRadius, innerRadius, offset, rotations, color]);
 
   const exportSVG = () => {
@@ -158,9 +202,22 @@ const SpirographGenerator = () => {
               height={400}
               className="border border-gray-200 rounded-lg w-full bg-white mb-4"
             />
-            <Button onClick={exportSVG} className="w-full">
-              Export as SVG
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={togglePlay} className="flex-1">
+                {isPlaying ? (
+                  <>
+                    <Square className="w-4 h-4 mr-2" /> Stop
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 mr-2" /> Play
+                  </>
+                )}
+              </Button>
+              <Button onClick={exportSVG} className="flex-1">
+                Export as SVG
+              </Button>
+            </div>
           </div>
           <div className="flex-1 space-y-6">
             <div>
