@@ -1,367 +1,415 @@
-import React, { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Zap, MessageSquare, X, Send } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
 
-const DefinitionPopup = ({ term, definition, productPage, onClose }) => (
-  <div className="p-4">
-    <div className="flex justify-between items-center mb-2">
-      <h3 className="text-lg font-semibold text-gray-900">{term}</h3>
-      <Button variant="ghost" size="sm" onClick={onClose}>
-        <X className="h-4 w-4" />
-      </Button>
-    </div>
-    <p className="text-sm text-gray-700 mb-4">{definition}</p>
-    <Button
-      className="w-full justify-center"
-      onClick={() => window.open(productPage, "_blank")}
-    >
-      Learn More
-    </Button>
-  </div>
-);
+const GRID_SIZE = 20;
+const CELL_SIZE = 20;
+const INITIAL_SNAKE = [{ x: 10, y: 10 }];
+const INITIAL_DIRECTION = { x: 1, y: 0 };
+const INITIAL_FOOD = { x: 15, y: 15 };
+const TARGET_SCORE = 200;
+const CAREFUL_THRESHOLD = 100;
 
-const ExplanationPopup = ({ text, explanation, onClose }) => {
-  const [currentExplanation, setCurrentExplanation] = useState(explanation);
+const mod = (n, m) => ((n % m) + m) % m;
 
-  const handleSimplify = () => {
-    setCurrentExplanation("This is a simplified version of the explanation.");
-  };
-
-  const handleMoreDetail = () => {
-    setCurrentExplanation(
-      "This is a more detailed version of the explanation, providing additional context and information about the topic."
-    );
-  };
-
-  return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-lg font-semibold text-gray-900">Explanation</h3>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-      <p className="text-sm text-gray-700 mb-4">{text}</p>
-      <p className="text-sm text-gray-700 mb-4">{currentExplanation}</p>
-      <div className="flex space-x-2">
-        <Button onClick={handleSimplify} className="flex-1">
-          Simplify
-        </Button>
-        <Button onClick={handleMoreDetail} className="flex-1">
-          Provide more detail
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-const ChatInterface = ({ initialMessage, onClose }) => {
-  const [messages, setMessages] = useState([
-    { text: initialMessage, sender: "user" },
-    {
-      text: "Hello! How can I assist you with AWS services today?",
-      sender: "assistant",
-    },
-  ]);
-  const [input, setInput] = useState("");
-
-  const handleSend = () => {
-    if (input.trim()) {
-      setMessages([...messages, { text: input, sender: "user" }]);
-      setInput("");
-
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            text: "Thank you for your question. I'm an AI assistant, and I'd be happy to help you with information about AWS services. Could you please provide more details about what you'd like to know?",
-            sender: "assistant",
-          },
-        ]);
-      }, 1000);
-    }
-  };
-
-  return (
-    <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center p-2 border-b">
-        <h3 className="text-lg font-semibold">Chat with AWS Assistant</h3>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-      <div className="flex-grow overflow-y-auto p-2">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`mb-2 ${
-              message.sender === "user" ? "text-right" : "text-left"
-            }`}
-          >
-            <span
-              className={`inline-block p-2 rounded-lg ${
-                message.sender === "user"
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-200"
-              }`}
-            >
-              {message.text}
-            </span>
-          </div>
-        ))}
-      </div>
-      <div className="border-t p-2 flex">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your message..."
-          className="flex-grow border rounded-l-lg px-2 py-1"
-        />
-        <Button onClick={handleSend} className="rounded-l-none">
-          <Send className="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-const Drawer = ({ isOpen, children, isChatMode }) => {
-  const contentRef = useRef(null);
-  const [height, setHeight] = useState("auto");
+const SnakeGame = () => {
+  const [snake, setSnake] = useState(INITIAL_SNAKE);
+  const [direction, setDirection] = useState(INITIAL_DIRECTION);
+  const [food, setFood] = useState(INITIAL_FOOD);
+  const [gameOver, setGameOver] = useState(false);
+  const [score, setScore] = useState(0);
+  const [movesSinceLastFood, setMovesSinceLastFood] = useState(0);
+  const [specialFood, setSpecialFood] = useState(null);
 
   useEffect(() => {
-    if (contentRef.current) {
-      if (isChatMode) {
-        setHeight("70vh");
-      } else {
-        const contentHeight = contentRef.current.scrollHeight;
-        const maxHeight = window.innerHeight * 0.5;
-        setHeight(Math.min(contentHeight, maxHeight));
+    let s = Date.now();
+    Math.random = () => {
+      s = (1103515245 * s + 12345) % 2147483647;
+      return s / 2147483647;
+    };
+  }, []);
+
+  const generateFood = useCallback(() => {
+    let newFood;
+    do {
+      newFood = {
+        x: Math.floor(Math.random() * GRID_SIZE),
+        y: Math.floor(Math.random() * GRID_SIZE),
+      };
+    } while (isCollision(newFood));
+    setFood(newFood);
+  }, []);
+
+  const generateSpecialFood = useCallback(() => {
+    if (Math.random() < 0.05) {
+      let newSpecialFood;
+      do {
+        newSpecialFood = {
+          x: Math.floor(Math.random() * GRID_SIZE),
+          y: Math.floor(Math.random() * GRID_SIZE),
+          type: Math.random() < 0.7 ? "score" : "speed",
+        };
+      } while (isCollision(newSpecialFood));
+      setSpecialFood(newSpecialFood);
+    } else {
+      setSpecialFood(null);
+    }
+  }, []);
+
+  const isCollision = useCallback(
+    (point, snk = snake) => {
+      return snk.some(
+        (segment) => segment.x === point.x && segment.y === point.y
+      );
+    },
+    [snake]
+  );
+
+  const getNextHead = useCallback(
+    (dir, head = snake[0]) => {
+      return {
+        x: mod(head.x + dir.x, GRID_SIZE),
+        y: mod(head.y + dir.y, GRID_SIZE),
+      };
+    },
+    [snake]
+  );
+
+  const getAvailableDirections = useCallback(
+    (head = snake[0]) => {
+      const directions = [
+        { x: 1, y: 0 },
+        { x: -1, y: 0 },
+        { x: 0, y: 1 },
+        { x: 0, y: -1 },
+      ];
+      return directions.filter((dir) => {
+        const nextHead = getNextHead(dir, head);
+        return !isCollision(nextHead, snake.slice(0, -1));
+      });
+    },
+    [getNextHead, isCollision, snake]
+  );
+
+  const findPath = useCallback(
+    (start, goal, snk) => {
+      const queue = [[start]];
+      const visited = new Set();
+
+      while (queue.length > 0) {
+        const path = queue.shift();
+        const current = path[path.length - 1];
+
+        if (current.x === goal.x && current.y === goal.y) {
+          return path;
+        }
+
+        const directions = [
+          { x: 1, y: 0 },
+          { x: -1, y: 0 },
+          { x: 0, y: 1 },
+          { x: 0, y: -1 },
+        ];
+
+        for (const dir of directions) {
+          const next = getNextHead(dir, current);
+          const key = `${next.x},${next.y}`;
+
+          if (!visited.has(key) && !isCollision(next, snk)) {
+            visited.add(key);
+            queue.push([...path, next]);
+          }
+        }
+      }
+
+      return null;
+    },
+    [getNextHead, isCollision]
+  );
+
+  const floodFill = useCallback((start, obstacles) => {
+    const queue = [start];
+    const visited = new Set();
+    const isValidCell = (x, y) =>
+      x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE;
+
+    while (queue.length > 0) {
+      const { x, y } = queue.shift();
+      const key = `${x},${y}`;
+
+      if (visited.has(key)) continue;
+      visited.add(key);
+
+      const directions = [
+        { x: 1, y: 0 },
+        { x: -1, y: 0 },
+        { x: 0, y: 1 },
+        { x: 0, y: -1 },
+      ];
+      for (const dir of directions) {
+        const newX = x + dir.x;
+        const newY = y + dir.y;
+        if (
+          isValidCell(newX, newY) &&
+          !obstacles.some((obs) => obs.x === newX && obs.y === newY)
+        ) {
+          queue.push({ x: newX, y: newY });
+        }
       }
     }
-  }, [children, isOpen, isChatMode]);
 
-  return (
-    <div
-      className={`fixed right-0 bottom-0 w-80 bg-white rounded-t-lg shadow-lg transition-all duration-300 ease-in-out ${
-        isOpen ? "translate-y-0" : "translate-y-full"
-      }`}
-      style={{
-        height: height,
-        maxHeight: isChatMode ? "70vh" : "50vh",
-        zIndex: 40,
-      }}
-    >
-      <div ref={contentRef} className="h-full overflow-y-auto">
-        {children}
-      </div>
-    </div>
+    return visited.size;
+  }, []);
+
+  const evaluateMove = useCallback(
+    (dir, head, snk, foodPos, currentScore) => {
+      const nextHead = getNextHead(dir, head);
+
+      if (isCollision(nextHead, snk.slice(0, -1))) return -Infinity;
+
+      let score = 0;
+
+      // Path to food
+      const pathToFood = findPath(nextHead, foodPos, snk);
+      if (pathToFood) {
+        score += 1000 - pathToFood.length * 10;
+      } else {
+        score -= 500;
+      }
+
+      // Available space after move
+      const floodFillScore = floodFill(nextHead, [
+        ...snk.slice(0, -1),
+        nextHead,
+      ]);
+      score += floodFillScore * 5;
+
+      // Consider special food
+      if (specialFood) {
+        const pathToSpecialFood = findPath(nextHead, specialFood, snk);
+        if (pathToSpecialFood) {
+          const specialFoodScore = specialFood.type === "score" ? 300 : 200;
+          score += specialFoodScore - pathToSpecialFood.length * 5;
+        }
+      }
+
+      // Adjust score based on current score
+      if (currentScore >= CAREFUL_THRESHOLD) {
+        const carefulness = Math.min(
+          (currentScore - CAREFUL_THRESHOLD) /
+            (TARGET_SCORE - CAREFUL_THRESHOLD),
+          1
+        );
+
+        // Reduce the importance of food as score increases
+        score *= 1 - carefulness * 0.4;
+
+        // Increase the importance of available space
+        score += floodFillScore * carefulness * 25;
+
+        // Penalize moves that bring the snake's head close to its body, but only from the front
+        const frontCollision = snk
+          .slice(1)
+          .some(
+            (segment) =>
+              segment.x === nextHead.x + dir.x &&
+              segment.y === nextHead.y + dir.y
+          );
+        if (frontCollision) {
+          score -= 1000 * carefulness;
+        }
+
+        // Encourage moves that keep the tail accessible
+        const pathToTail = findPath(
+          nextHead,
+          snk[snk.length - 1],
+          snk.slice(0, -1)
+        );
+        if (pathToTail) {
+          score += 300 * carefulness;
+        } else {
+          score -= 600 * carefulness;
+        }
+
+        // Discourage moves that create small enclosed spaces
+        const oppositeDir = { x: -dir.x, y: -dir.y };
+        const behindHead = getNextHead(oppositeDir, head);
+        if (!isCollision(behindHead, snk)) {
+          const spaceBeforeMove = floodFill(behindHead, snk);
+          const spaceAfterMove = floodFill(behindHead, [...snk, nextHead]);
+          if (spaceAfterMove < spaceBeforeMove) {
+            score -= (spaceBeforeMove - spaceAfterMove) * 15 * carefulness;
+          }
+        }
+      }
+
+      return score;
+    },
+    [getNextHead, isCollision, findPath, floodFill, specialFood]
   );
-};
 
-const Paragraph = ({
-  children,
-  qModeActive,
-  isActive,
-  onMouseEnter,
-  onMouseLeave,
-  onExplain,
-  onChat,
-}) => {
+  const chooseDirection = useCallback(() => {
+    const availableDirections = getAvailableDirections();
+    if (availableDirections.length === 0) return null;
+
+    // Occasionally make a random move to break potential loops
+    if (movesSinceLastFood > GRID_SIZE * 2 && Math.random() < 0.15) {
+      return availableDirections[
+        Math.floor(Math.random() * availableDirections.length)
+      ];
+    }
+
+    const head = snake[0];
+    const scores = availableDirections.map((dir) => ({
+      direction: dir,
+      score: evaluateMove(dir, head, snake, food, score),
+    }));
+
+    // Choose the move with the highest score
+    return scores.reduce((best, current) =>
+      current.score > best.score ? current : best
+    ).direction;
+  }, [
+    getAvailableDirections,
+    movesSinceLastFood,
+    snake,
+    food,
+    evaluateMove,
+    score,
+  ]);
+
+  const moveSnake = useCallback(() => {
+    if (gameOver) return;
+
+    const newDirection = chooseDirection();
+    if (!newDirection) {
+      setGameOver(true);
+      return;
+    }
+
+    setDirection(newDirection);
+    setSnake((prevSnake) => {
+      const newHead = getNextHead(newDirection);
+      const newSnake = [newHead, ...prevSnake];
+
+      if (newHead.x === food.x && newHead.y === food.y) {
+        setScore((s) => s + 1);
+        generateFood();
+        setMovesSinceLastFood(0);
+      } else if (
+        specialFood &&
+        newHead.x === specialFood.x &&
+        newHead.y === specialFood.y
+      ) {
+        if (specialFood.type === "score") {
+          setScore((s) => s + 3);
+        }
+        setSpecialFood(null);
+        setMovesSinceLastFood(0);
+      } else {
+        newSnake.pop();
+        setMovesSinceLastFood((m) => m + 1);
+      }
+
+      return newSnake;
+    });
+
+    if (!specialFood) generateSpecialFood();
+
+    // Check if the game is won
+    if (score >= TARGET_SCORE) {
+      setGameOver(true);
+    }
+  }, [
+    gameOver,
+    chooseDirection,
+    getNextHead,
+    food,
+    generateFood,
+    specialFood,
+    generateSpecialFood,
+    score,
+  ]);
+
+  useEffect(() => {
+    const gameLoopInterval =
+      specialFood && specialFood.type === "speed" ? 50 : 100;
+    const gameLoop = setInterval(moveSnake, gameLoopInterval);
+    return () => clearInterval(gameLoop);
+  }, [moveSnake, specialFood]);
+
+  const restartGame = () => {
+    setSnake(INITIAL_SNAKE);
+    setDirection(INITIAL_DIRECTION);
+    generateFood();
+    setGameOver(false);
+    setScore(0);
+    setMovesSinceLastFood(0);
+    setSpecialFood(null);
+  };
+
   return (
-    <div
-      className={`relative mb-4 p-2 rounded transition-colors duration-200 ${
-        isActive && qModeActive ? "bg-gray-200" : ""
-      }`}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
-      {children}
-      {isActive && qModeActive && (
-        <div className="absolute right-0 bottom-0 translate-y-full bg-white shadow-lg rounded-b-lg px-2 py-1 flex items-center space-x-2 z-10">
-          <Button size="sm" onClick={onExplain}>
-            Explain
-          </Button>
-          <Button size="sm" onClick={onChat}>
-            Chat
-          </Button>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+      <h1 className="text-4xl font-bold mb-4">AI Snake Game v4.4</h1>
+      <div
+        className="relative"
+        style={{ width: GRID_SIZE * CELL_SIZE, height: GRID_SIZE * CELL_SIZE }}
+      >
+        <div className="absolute inset-0 bg-white border border-gray-300">
+          {snake.map((segment, index) => (
+            <div
+              key={index}
+              className="absolute bg-green-500"
+              style={{
+                left: segment.x * CELL_SIZE,
+                top: segment.y * CELL_SIZE,
+                width: CELL_SIZE,
+                height: CELL_SIZE,
+              }}
+            />
+          ))}
+          <div
+            className="absolute bg-red-500"
+            style={{
+              left: food.x * CELL_SIZE,
+              top: food.y * CELL_SIZE,
+              width: CELL_SIZE,
+              height: CELL_SIZE,
+            }}
+          />
+          {specialFood && (
+            <div
+              className={`absolute ${
+                specialFood.type === "speed" ? "bg-blue-500" : "bg-yellow-500"
+              }`}
+              style={{
+                left: specialFood.x * CELL_SIZE,
+                top: specialFood.y * CELL_SIZE,
+                width: CELL_SIZE,
+                height: CELL_SIZE,
+              }}
+            />
+          )}
+        </div>
+      </div>
+      <div className="mt-4 text-xl">
+        Score: {score} / {TARGET_SCORE}
+      </div>
+      {gameOver && (
+        <div className="mt-4">
+          <p className="text-2xl font-bold mb-2">
+            {score >= TARGET_SCORE
+              ? "Congratulations! You've won!"
+              : "Game Over!"}
+          </p>
+          <button
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            onClick={restartGame}
+          >
+            Restart Game
+          </button>
         </div>
       )}
     </div>
   );
 };
 
-const Section = ({ title, children }) => {
-  return (
-    <section className="mb-8">
-      <h2 className="text-xl font-bold mb-4">{title}</h2>
-      {children}
-    </section>
-  );
-};
-
-const InlineCollapsibleExplanation = () => {
-  const [qModeActive, setQModeActive] = useState(false);
-  const [activeParagraph, setActiveParagraph] = useState(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerContent, setDrawerContent] = useState(null);
-  const [isChatMode, setIsChatMode] = useState(false);
-
-  const openDefinitionDrawer = (term, definition, productPage) => {
-    setDrawerContent(
-      <DefinitionPopup
-        term={term}
-        definition={definition}
-        productPage={productPage}
-        onClose={() => setDrawerOpen(false)}
-      />
-    );
-    setDrawerOpen(true);
-    setIsChatMode(false);
-  };
-
-  const InteractiveTerm = ({ term, definition, productPage }) => (
-    <span
-      className={`px-1 py-0.5 rounded cursor-help transition-colors duration-200 ${
-        qModeActive ? "bg-purple-200 hover:bg-purple-300" : "bg-transparent"
-      }`}
-      onClick={() =>
-        qModeActive && openDefinitionDrawer(term, definition, productPage)
-      }
-    >
-      {term}
-    </span>
-  );
-
-  const handleExplain = (text) => {
-    const loremIpsum =
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.";
-    setDrawerContent(
-      <ExplanationPopup
-        text={text}
-        explanation={loremIpsum}
-        onClose={() => setDrawerOpen(false)}
-      />
-    );
-    setDrawerOpen(true);
-    setIsChatMode(false);
-  };
-
-  const handleChat = (text) => {
-    setDrawerContent(
-      <ChatInterface
-        initialMessage={`I'd like to know more about: "${text}"`}
-        onClose={() => setDrawerOpen(false)}
-      />
-    );
-    setDrawerOpen(true);
-    setIsChatMode(true);
-  };
-
-  const createParagraphProps = (id, text) => ({
-    qModeActive,
-    isActive: activeParagraph === id,
-    onMouseEnter: () => qModeActive && setActiveParagraph(id),
-    onMouseLeave: () => setActiveParagraph(null),
-    onExplain: () => handleExplain(text),
-    onChat: () => handleChat(text),
-  });
-
-  return (
-    <div
-      className={`p-4 min-h-screen ${qModeActive ? "bg-blue-50" : "bg-white"}`}
-    >
-      <div className="max-w-3xl mx-auto pb-20">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">AWS Cloud Services</h1>
-          <Button
-            variant={qModeActive ? "default" : "outline"}
-            onClick={() => setQModeActive(!qModeActive)}
-          >
-            <Zap
-              className={`h-4 w-4 mr-2 ${qModeActive ? "text-yellow-500" : ""}`}
-            />
-            Q Mode {qModeActive ? "On" : "Off"}
-          </Button>
-        </div>
-
-        <Section title="Explore the Power of AWS">
-          <Paragraph
-            {...createParagraphProps(
-              "p1",
-              "AWS provides a comprehensive suite of cloud services designed to help you build, deploy, and scale applications with ease. From compute power to storage solutions, AWS has everything you need to take your ideas to the next level."
-            )}
-          >
-            <p className="text-lg">
-              AWS provides a comprehensive suite of cloud services designed to
-              help you build, deploy, and scale applications with ease. From
-              compute power to storage solutions, AWS has everything you need to
-              take your ideas to the next level.
-            </p>
-          </Paragraph>
-          <Paragraph
-            {...createParagraphProps(
-              "p2",
-              "Our flagship service, EC2 (Elastic Compute Cloud), allows you to run virtual servers in the cloud, giving you the flexibility to scale your computing resources as needed. For container orchestration, we offer ECS (Elastic Container Service)."
-            )}
-          >
-            <p>
-              Our flagship service,{" "}
-              <InteractiveTerm
-                term="EC2 (Elastic Compute Cloud)"
-                definition="EC2 provides resizable compute capacity in the cloud. It is designed to make web-scale cloud computing easier for developers."
-                productPage="https://aws.amazon.com/ec2/"
-              />
-              , allows you to run virtual servers in the cloud, giving you the
-              flexibility to scale your computing resources as needed. For
-              container orchestration, we offer{" "}
-              <InteractiveTerm
-                term="ECS (Elastic Container Service)"
-                definition="ECS is a fully managed container orchestration service that makes it easy to run, stop, and manage Docker containers on a cluster."
-                productPage="https://aws.amazon.com/ecs/"
-              />
-              .
-            </p>
-          </Paragraph>
-        </Section>
-
-        <Section title="Storage and Database Solutions">
-          <Paragraph
-            {...createParagraphProps(
-              "p3",
-              "When it comes to data storage, AWS offers a range of solutions to meet your needs. Our S3 (Simple Storage Service) provides industry-leading scalability, data availability, security, and performance."
-            )}
-          >
-            <p>
-              When it comes to data storage, AWS offers a range of solutions to
-              meet your needs. Our{" "}
-              <InteractiveTerm
-                term="S3 (Simple Storage Service)"
-                definition="S3 is an object storage service offering industry-leading scalability, data availability, security, and performance."
-                productPage="https://aws.amazon.com/s3/"
-              />{" "}
-              provides industry-leading scalability, data availability,
-              security, and performance.
-            </p>
-          </Paragraph>
-        </Section>
-      </div>
-
-      <Drawer isOpen={drawerOpen} isChatMode={isChatMode}>
-        {drawerContent}
-      </Drawer>
-
-      <Button
-        className="fixed bottom-4 right-4 rounded-full h-12 w-12 shadow-lg z-30"
-        onClick={() =>
-          handleChat("I have a general question about AWS services.")
-        }
-      >
-        <MessageSquare className="h-6 w-4" />
-      </Button>
-    </div>
-  );
-};
-
-export default InlineCollapsibleExplanation;
+export default SnakeGame;
