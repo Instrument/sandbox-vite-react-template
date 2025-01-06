@@ -1,11 +1,12 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import SnakeGame from "./views/SnakeGame";
+import Home from "./views/Home";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* <Route path="/" element={<Home />} /> */}
+        <Route path="/" element={<Home />} />
         <Route path="/snake" element={<SnakeGame />} />
       </Routes>
     </BrowserRouter>
