@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import SnakeGame from "./views/SnakeGame";
 import Home from "./Home";
+import SnakeGame from "./views/SnakeGame";
+import Spirograph from "./views/Spirograph";
 
 function App() {
   return (
@@ -8,6 +9,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/snake" element={<SnakeGame />} />
+        <Route path="/spirograph" element={<Spirograph />} />
       </Routes>
     </BrowserRouter>
   );
